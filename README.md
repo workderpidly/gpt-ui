@@ -18,11 +18,10 @@
          - Click Activator: Opens a GUI listing all parts with ClickDetectors and, for toggled parts, fires their detectors every frame.
     • Persistence: The GUI automatically re‑activates on teleport unless the user manually closed it.
     
-  To enable re‑activation on teleport, ensure your exploit supports queue_on_teleport.
-  Replace the URL below with the URL where this script is hosted.
+  The re‑activation on teleport is queued using queue_on_teleport.
 --]]
 
--- (Persistence check using a client-side flag; this version does not use file I/O.)
+-- Use a persistent flag in getgenv() to track if the GUI was manually closed.
 if getgenv().GuiClosed then
     return
 end
@@ -443,7 +442,7 @@ local page2 = pages[2]
 
 local function createHitboxControls(parent)
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.5,-10,0,30)
+    box.Size = UDim2.new(0,50,0,30)
     box.Position = UDim2.new(0,10,0,60)
     box.PlaceholderText = "Size (X,Y,Z)"
     box.Text = "4,4,4"
@@ -987,7 +986,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Click Activator (renamed) GUI
+-- Click Activator: Opens a new GUI listing all parts with ClickDetectors.
 local function openClickOverrideGUI()
     local overrideGui = Instance.new("ScreenGui")
     overrideGui.Name = "ClickActivatorGUI"
@@ -1133,11 +1132,12 @@ infiniteHealthBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Queue the reactivation of this script on teleport.
 if queue_on_teleport then
     queue_on_teleport([[
+        repeat wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+        wait(5)  -- extra delay to ensure everything is loaded
         if not getgenv().GuiClosed then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/YourUser/YourRepo/YourScript.lua", true))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
         end
     ]])
 end
