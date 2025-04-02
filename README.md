@@ -1,5 +1,5 @@
 --[[ 
-  Optimized GPT UI Script with Auto-Queue on Teleport (Self-Hosting Source)
+  Optimized GPT UI Script with Queue_on_teleport
   Features:
     • Tracker GUIs (spawned by entering a part name)
       - Teleport tracked parts to player (customizable delay & limit)
@@ -15,11 +15,14 @@
     • Value Override (scan for NumberValue objects, toggle selection, set new value)
     • Page 4: Highlight Mode & Click Activator
          - Highlight Mode: Toggles a SelectionBox around the part under the mouse and displays its name.
-         - Click Activator: Opens a GUI listing all parts with ClickDetectors and, for toggled parts, fires their detectors continuously.
-    • Persistence: The GUI automatically re-opens on teleport unless the user manually closes it.
+         - Click Activator: Opens a GUI listing all parts with ClickDetectors and, for toggled parts, fires their detectors every frame.
+    • Persistence: The GUI automatically re‑activates on teleport unless the user manually closed it.
+    
+  To enable re‑activation on teleport, ensure your exploit supports queue_on_teleport.
+  Replace the URL below with the URL where this script is hosted.
 --]]
 
--- Use a persistent global flag to track if the user manually closed the GUI.
+-- (Persistence check using a client-side flag; this version does not use file I/O.)
 if getgenv().GuiClosed then
     return
 end
@@ -44,7 +47,6 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- Helper: Create a standard delete button.
--- When used on the main GUI, mark getgenv().GuiClosed = true.
 local function createDeleteButton(parent)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0,30,0,30)
@@ -441,7 +443,7 @@ local page2 = pages[2]
 
 local function createHitboxControls(parent)
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0,50,0,30)
+    box.Size = UDim2.new(0.5,-10,0,30)
     box.Position = UDim2.new(0,10,0,60)
     box.PlaceholderText = "Size (X,Y,Z)"
     box.Text = "4,4,4"
@@ -985,7 +987,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Click Activator GUI (renamed)
+-- Click Activator (renamed) GUI
 local function openClickOverrideGUI()
     local overrideGui = Instance.new("ScreenGui")
     overrideGui.Name = "ClickActivatorGUI"
@@ -1131,11 +1133,11 @@ infiniteHealthBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Auto-Queue on Teleport using the script's own source
+-- Queue the reactivation of this script on teleport.
 if queue_on_teleport then
-    local src = debug.getinfo(1).source
-    if src:sub(1,1) == "@" and readfile then
-        src = readfile(src:sub(2))
-    end
-    queue_on_teleport(src)
+    queue_on_teleport([[
+        if not getgenv().GuiClosed then
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/YourUser/YourRepo/YourScript.lua", true))()
+        end
+    ]])
 end
