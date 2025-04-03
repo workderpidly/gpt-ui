@@ -1,5 +1,5 @@
 --[[ 
-  Optimized GPT UI Script with Queue_on_teleport
+  Optimized GPT UI Script with Robust Queue_on_teleport and Minimal Bootstrap
   Features:
     • Tracker GUIs (spawned by entering a part name)
       - Teleport tracked parts to player (customizable delay & limit)
@@ -16,12 +16,12 @@
     • Page 4: Highlight Mode & Click Activator
          - Highlight Mode: Toggles a SelectionBox around the part under the mouse and displays its name.
          - Click Activator: Opens a GUI listing all parts with ClickDetectors and, for toggled parts, fires their detectors every frame.
-    • Persistence: The GUI automatically re‑activates on teleport unless the user manually closed it.
+    • Persistence: On teleport, a minimal bootstrap button appears. When clicked, it loads the full GPT UI script.
     
-  The re‑activation on teleport is queued using queue_on_teleport.
+  Note: The full script is loaded from your GitHub repository's README (which now publicly hosts the code).
 --]]
 
--- Use a persistent flag in getgenv() to track if the GUI was manually closed.
+-- Persistent flag: if the GUI was manually closed, do not reload.
 if getgenv().GuiClosed then
     return
 end
@@ -1132,12 +1132,37 @@ infiniteHealthBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Queue the reactivation of this script on teleport.
 if queue_on_teleport then
     queue_on_teleport([[
         repeat wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-        wait(5)  -- extra delay to ensure everything is loaded
+        wait(10)  -- Extra delay to ensure everything is loaded
         if not getgenv().GuiClosed then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
+            -- Create a minimal bootstrap GUI with a "Load GPT UI" button.
+            local bootstrapGui = Instance.new("ScreenGui")
+            bootstrapGui.Name = "BootstrapGUI"
+            bootstrapGui.ResetOnSpawn = false
+            bootstrapGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+            
+            local loadButton = Instance.new("TextButton")
+            loadButton.Size = UDim2.new(0,200,0,50)
+            loadButton.Position = UDim2.new(0,10,0,50)  -- Positioned at top left
+            loadButton.Text = "Load GPT UI"
+            loadButton.BackgroundColor3 = Color3.new(0,1,0)
+            loadButton.TextColor3 = Color3.new(1,1,1)
+            loadButton.Font = Enum.Font.SourceSansBold
+            loadButton.TextSize = 24
+            loadButton.Parent = bootstrapGui
+            
+            loadButton.MouseButton1Click:Connect(function()
+                bootstrapGui:Destroy()
+                local success, err = pcall(function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
+                end)
+                if not success then
+                    warn("Error loading full GPT UI: " .. tostring(err))
+                end
+            end)
         end
     ]])
 end
