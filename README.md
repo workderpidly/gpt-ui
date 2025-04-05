@@ -1,5 +1,5 @@
 --[[ 
-  Optimized GPT UI Script with Robust Queue_on_teleport and Minimal Bootstrap
+  Optimized GPT UI Script with Backup Teleport Reactivation, Adjusted Layout, and Mouse Unbind Shortcut
   Features:
     • Tracker GUIs (spawned by entering a part name)
       - Teleport tracked parts to player (customizable delay & limit)
@@ -15,10 +15,12 @@
     • Value Override (scan for NumberValue objects, toggle selection, set new value)
     • Page 4: Highlight Mode & Click Activator
          - Highlight Mode: Toggles a SelectionBox around the part under the mouse and displays its name.
-         - Click Activator: Opens a GUI listing all parts with ClickDetectors and, for toggled parts, fires their detectors every frame.
-    • Persistence: On teleport, a minimal bootstrap button appears. When clicked, it loads the full GPT UI script.
+         - Click Activator: Opens a GUI listing all parts with ClickDetectors and fires them when toggled.
+    • Persistence: On teleport, a minimal bootstrap button appears (or a backup via CharacterAdded),
+       which when clicked loads the full GPT UI script.
+    • Mouse Unbind: Pressing "=" unbinds the mouse (sets MouseBehavior to Default).
     
-  Note: The full script is loaded from your GitHub repository's README (which now publicly hosts the code).
+  The full script is loaded from your public GitHub repository's README.
 --]]
 
 -- Persistent flag: if the GUI was manually closed, do not reload.
@@ -33,17 +35,18 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
+-- Create and name the main ScreenGui so we can check for it later.
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GPTUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
 -- Global variables
 local hitboxIndicator, baseIndicatorSize
 local radiusToggled = true
 local activeTargets, outlinedAdorns, sidebarEntries = {}, {}, {}
 local teleportDelay, teleportDuration = 0, 0.1
 local infiniteHealth = false
-
--- Create main ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- Helper: Create a standard delete button.
 local function createDeleteButton(parent)
@@ -440,17 +443,20 @@ end)
 -----------------------------------------------------------
 local page2 = pages[2]
 
+-- Adjusted hitbox controls: TextBox and Button each roughly half the width.
 local function createHitboxControls(parent)
+    local textboxWidth = 115  -- roughly half of main width (~230)
+    
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0,50,0,30)
+    box.Size = UDim2.new(0, textboxWidth, 0, 30)
     box.Position = UDim2.new(0,10,0,60)
     box.PlaceholderText = "Size (X,Y,Z)"
     box.Text = "4,4,4"
     box.Parent = parent
 
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,50,0,30)
-    btn.Position = UDim2.new(0,10,0,100)
+    btn.Size = UDim2.new(0, textboxWidth, 0, 30)
+    btn.Position = UDim2.new(0,10,0,95) -- Positioned 35 pixels below the textbox
     btn.Text = "Set Size"
     btn.BackgroundColor3 = Color3.fromRGB(0,0,255)
     btn.TextColor3 = Color3.new(1,1,1)
@@ -460,9 +466,11 @@ local function createHitboxControls(parent)
 
     btn.MouseButton1Click:Connect(function()
         local values = {}
-        for v in string.gmatch(box.Text, "[^,]+") do table.insert(values, tonumber(v)) end
+        for v in string.gmatch(box.Text, "[^,]+") do
+            table.insert(values, tonumber(v))
+        end
         if #values==3 and values[1] and values[2] and values[3] then
-            baseIndicatorSize = Vector3.new(values[1],values[2],values[3])
+            baseIndicatorSize = Vector3.new(values[1], values[2], values[3])
             if hitboxIndicator then hitboxIndicator:Destroy() end
             hitboxIndicator = Instance.new("Part")
             hitboxIndicator.Size = baseIndicatorSize
@@ -480,25 +488,27 @@ local function createHitboxControls(parent)
 end
 createHitboxControls(page2)
 
+-- Teleport Parameter Controls: Positioned on the right side at the same y-level (60) as the hitbox textbox,
+-- with the "Set Parameters" button below them.
 local function createTeleportParamControls(parent)
     local delayBox = Instance.new("TextBox")
     delayBox.Size = UDim2.new(0,50,0,30)
-    delayBox.Position = UDim2.new(0.5,10,0,60)
-    delayBox.PlaceholderText = "Delay (sec)"
+    delayBox.Position = UDim2.new(0,130,0,60)
+    delayBox.PlaceholderText = "Delay"
     delayBox.Text = "0"
     delayBox.Parent = parent
 
     local durationBox = Instance.new("TextBox")
     durationBox.Size = UDim2.new(0,50,0,30)
-    durationBox.Position = UDim2.new(0.75,0,0,60)
-    durationBox.PlaceholderText = "Duration (sec)"
+    durationBox.Position = UDim2.new(0,190,0,60)
+    durationBox.PlaceholderText = "Dur."
     durationBox.Text = "0.1"
     durationBox.Parent = parent
 
     local setBtn = Instance.new("TextButton")
-    setBtn.Size = UDim2.new(0,50,0,30)
-    setBtn.Position = UDim2.new(0.5,10,0,100)
-    setBtn.Text = "Set"
+    setBtn.Size = UDim2.new(0,80,0,30)
+    setBtn.Position = UDim2.new(0,130,0,95)
+    setBtn.Text = "Set Parameters"
     setBtn.BackgroundColor3 = Color3.fromRGB(0,0,255)
     setBtn.TextColor3 = Color3.new(1,1,1)
     setBtn.Font = Enum.Font.SourceSansBold
@@ -1132,26 +1142,27 @@ infiniteHealthBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Queue the reactivation of this script on teleport.
+-- Primary method: Queue reactivation on teleport.
 if queue_on_teleport then
     queue_on_teleport([[
         repeat wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
         wait(10)  -- Extra delay to ensure everything is loaded
         if not getgenv().GuiClosed then
-            -- Create a minimal bootstrap GUI with a "Load GPT UI" button.
             local bootstrapGui = Instance.new("ScreenGui")
             bootstrapGui.Name = "BootstrapGUI"
             bootstrapGui.ResetOnSpawn = false
+            bootstrapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling  -- Ensure proper ZIndex handling
             bootstrapGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
             
             local loadButton = Instance.new("TextButton")
             loadButton.Size = UDim2.new(0,200,0,50)
-            loadButton.Position = UDim2.new(0,10,0,50)  -- Positioned at top left
+            loadButton.Position = UDim2.new(0,10,0,70)  -- Moved up: Y position is now 70
             loadButton.Text = "Load GPT UI"
             loadButton.BackgroundColor3 = Color3.new(0,1,0)
             loadButton.TextColor3 = Color3.new(1,1,1)
             loadButton.Font = Enum.Font.SourceSansBold
             loadButton.TextSize = 24
+            loadButton.ZIndex = 10  -- Ensure the button is above other elements
             loadButton.Parent = bootstrapGui
             
             loadButton.MouseButton1Click:Connect(function()
@@ -1165,4 +1176,17 @@ if queue_on_teleport then
             end)
         end
     ]])
+else
+    -- Backup method using CharacterAdded event (unchanged)
+    player.CharacterAdded:Connect(function(character)
+        wait(10)
+        if not getgenv().GuiClosed and not player.PlayerGui:FindFirstChild("GPTUI") then
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
+            end)
+            if not success then
+                warn("Error reloading GUI on CharacterAdded: " .. tostring(err))
+            end
+        end
+    end)
 end
