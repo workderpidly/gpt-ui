@@ -1151,21 +1151,22 @@ if queue_on_teleport then
             local bootstrapGui = Instance.new("ScreenGui")
             bootstrapGui.Name = "BootstrapGUI"
             bootstrapGui.ResetOnSpawn = false
-            bootstrapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling  -- Ensure proper ZIndex handling
+            bootstrapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling  -- Ensure proper layering
             bootstrapGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
             
             local loadButton = Instance.new("TextButton")
             loadButton.Size = UDim2.new(0,200,0,50)
-            loadButton.Position = UDim2.new(0,10,0,70)  -- Moved up: Y position is now 70
+            loadButton.Position = UDim2.new(0,10,0,70)  -- Positioned a bit higher on the screen
             loadButton.Text = "Load GPT UI"
             loadButton.BackgroundColor3 = Color3.new(0,1,0)
             loadButton.TextColor3 = Color3.new(1,1,1)
             loadButton.Font = Enum.Font.SourceSansBold
             loadButton.TextSize = 24
-            loadButton.ZIndex = 10  -- Ensure the button is above other elements
+            loadButton.ZIndex = 10  -- Ensure the button is on top
             loadButton.Parent = bootstrapGui
             
-            loadButton.MouseButton1Click:Connect(function()
+            -- Function to load the full GPT UI script and unbind the mouse.
+            local function loadFullUI()
                 bootstrapGui:Destroy()
                 local success, err = pcall(function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
@@ -1173,11 +1174,23 @@ if queue_on_teleport then
                 if not success then
                     warn("Error loading full GPT UI: " .. tostring(err))
                 end
+                -- Unlock the mouse regardless of shift lock or game settings.
+                game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
+            end
+            
+            loadButton.MouseButton1Click:Connect(loadFullUI)
+            
+            -- Also bind the "=" key to trigger the same function.
+            game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed then return end
+                if input.KeyCode == Enum.KeyCode.Equals then
+                    loadFullUI()
+                end
             end)
         end
     ]])
 else
-    -- Backup method using CharacterAdded event (unchanged)
+    -- Backup method: Use CharacterAdded event.
     player.CharacterAdded:Connect(function(character)
         wait(10)
         if not getgenv().GuiClosed and not player.PlayerGui:FindFirstChild("GPTUI") then
