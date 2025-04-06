@@ -1211,7 +1211,7 @@ else
         wait(10)
         if not getgenv().GuiClosed and not player.PlayerGui:FindFirstChild("GPTUI") then
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/username/repo/main/script.lua"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md"))()
             end)
             if not success then
                 warn("Error reloading GUI on CharacterAdded: " .. tostring(err))
