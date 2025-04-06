@@ -1,6 +1,7 @@
 --[[ 
-  Optimized GPT UI Script with Backup Teleport Reactivation, Adjusted Layout, 
-  Persistent Forced Mouse Unlock/Zoom, and Persistence.
+  Optimized GPT UI Script with Backup Teleport Reactivation, Adjusted Layout,
+  Persistent Forced Mouse Unlock/Zoom, and an Animation Loader (on Page 4) that
+  attaches a click detector to a humanoid's root part when "Copy Animation" is toggled on.
   
   Features:
     • Tracker GUIs (spawned by entering a part name)
@@ -15,15 +16,19 @@
     • Classic Sword (built from parts with guard, custom sizing, slash animation)
     • Restore Jump
     • Value Override (scan for NumberValue objects, toggle selection, set new value)
-    • Page 4: Highlight Mode & Click Activator
+    • Page 4: 
          - Highlight Mode: Toggles a SelectionBox around the part under the mouse and displays its name.
          - Click Activator: Opens a GUI listing all parts with ClickDetectors and fires them when toggled.
-    • Persistence: On teleport, a minimal bootstrap GUI appears. When its button is clicked 
+         - Animation Loader: Opens a draggable GUI that has:
+              • A "Copy Animation" toggle button – when enabled, a click detector (“AnimationCopier”) is attached to any HumanoidRootPart under the mouse.
+              • When that click detector is clicked, the humanoid’s current playing animation is copied to a scrolling list.
+              • Clicking an item on the list loads that animation on the player's humanoid.
+              • A "Clear Animation" button stops any currently playing animations on the player.
+    • Persistence: On teleport, a minimal bootstrap GUI appears. When its button is clicked
          (or when the "=" key is pressed), the camera is set for free zoom, the mouse is unlocked,
-         and the full GPT UI is loaded from your public GitHub README.
+         and the full GPT UI script is loaded from your public GitHub repository's README.
     • Backup: If queue_on_teleport is unavailable, a CharacterAdded event is used.
-    • Forced Mouse Unlock: Once the "=" key is pressed at any time, a persistent heartbeat forces
-         the mouse to unlock and the camera to allow unlimited zoom.
+    • Forced Mouse Unlock: Once "=" is pressed, a persistent heartbeat continuously unlocks the mouse.
 --]]
 
 -- Persistent flag: if the GUI was manually closed, do not reload.
@@ -38,7 +43,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
--- Create and name the main ScreenGui so we can check for it later.
+-- Create and name the main ScreenGui.
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "GPTUI"
 screenGui.ResetOnSpawn = false
@@ -70,7 +75,7 @@ local function createDeleteButton(parent)
     end)
 end
 
--- Main GUI frame
+-- Main GUI frame.
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0,250,0,250)
 mainFrame.Position = UDim2.new(0.5,-125,0.05,0)
@@ -81,7 +86,7 @@ mainFrame.Parent = screenGui
 
 createDeleteButton(mainFrame)
 
--- Title label
+-- Title label.
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1,-35,0,30)
 titleLabel.Position = UDim2.new(0,35,0,0)
@@ -92,7 +97,7 @@ titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextSize = 20
 titleLabel.Parent = mainFrame
 
--- Create 4 pages
+-- Create 4 pages.
 local pages = {}
 for i = 1,4 do
     local page = Instance.new("Frame")
@@ -105,7 +110,7 @@ for i = 1,4 do
     pages[i] = page
 end
 
--- Page navigation bar (4 buttons)
+-- Page navigation bar (4 buttons).
 local pageNav = Instance.new("Frame")
 pageNav.Size = UDim2.new(1,0,0,40)
 pageNav.Position = UDim2.new(0,0,1,-40)
@@ -277,7 +282,7 @@ trackerTextBox.FocusLost:Connect(function(enterPressed)
     end
 end)
 
--- Tracker GUI function
+-- Tracker GUI function.
 local function createTrackerGui(partName)
     local trackerGui = Instance.new("ScreenGui")
     trackerGui.ResetOnSpawn = false
@@ -340,7 +345,7 @@ local function createTrackerGui(partName)
         collisionToggled = not collisionToggled
         if collisionToggled then
             disableCollisionButton.Text = "Collision: OFF"
-            disableCollisionButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
+            disableCollisionButton.BackgroundColor3 = Color3.new(0,1,0)
             for _, p in ipairs(workspace:GetDescendants()) do
                 if p:IsA("BasePart") and p.Name == partName then
                     p.CanCollide = false
@@ -446,10 +451,8 @@ end)
 -----------------------------------------------------------
 local page2 = pages[2]
 
--- Adjusted hitbox controls: TextBox and Button each roughly half the width.
 local function createHitboxControls(parent)
-    local textboxWidth = 115  -- roughly half the width of main UI (approx.)
-    
+    local textboxWidth = 115
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0, textboxWidth, 0, 30)
     box.Position = UDim2.new(0,10,0,60)
@@ -459,7 +462,7 @@ local function createHitboxControls(parent)
 
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, textboxWidth, 0, 30)
-    btn.Position = UDim2.new(0,10,0,95) -- 35 pixels below the textbox
+    btn.Position = UDim2.new(0,10,0,95)
     btn.Text = "Set Size"
     btn.BackgroundColor3 = Color3.fromRGB(0,0,255)
     btn.TextColor3 = Color3.new(1,1,1)
@@ -491,7 +494,6 @@ local function createHitboxControls(parent)
 end
 createHitboxControls(page2)
 
--- Teleport Parameter Controls: Positioned on the same y-level as the hitbox textbox.
 local function createTeleportParamControls(parent)
     local delayBox = Instance.new("TextBox")
     delayBox.Size = UDim2.new(0,50,0,30)
@@ -740,7 +742,7 @@ valueOverrideBtn.TextSize = 20
 valueOverrideBtn.Parent = page3
 valueOverrideBtn.MouseButton1Click:Connect(function() openValueOverrideGUI() end)
 
--- Classic Sword function
+-- Classic Sword function.
 function giveClassicSword()
     local backpack = player:WaitForChild("Backpack")
     if backpack:FindFirstChild("Classic Sword") then return end
@@ -822,7 +824,7 @@ function giveClassicSword()
 end
 swordBtn.MouseButton1Click:Connect(function() giveClassicSword() end)
 
--- Value Override GUI function (unchanged)
+-- Value Override GUI function (unchanged).
 function openValueOverrideGUI()
     local overrideGui = Instance.new("ScreenGui")
     overrideGui.Name = "ValueOverrideGUI"
@@ -931,10 +933,9 @@ function openValueOverrideGUI()
     end)
 end
 
--- PAGE 4: Highlight Mode & Click Activator
+-- PAGE 4: Highlight Mode, Click Activator, and Animation Loader.
 local page4 = pages[4]
 
--- Highlight Mode
 local highlightEnabled = false
 local highlightToggle = Instance.new("TextButton")
 highlightToggle.Size = UDim2.new(1,-20,0,35)
@@ -975,130 +976,6 @@ selectionLabel.TextSize = 18
 selectionLabel.Parent = page4
 _G.selectedPartLabel = selectionLabel
 
-RunService.Heartbeat:Connect(function()
-    if highlightEnabled then
-        local target = player:GetMouse().Target
-        if target and target:IsDescendantOf(workspace) then
-            if not _G.currentHighlight or _G.currentHighlight.Adornee ~= target then
-                if _G.currentHighlight then _G.currentHighlight:Destroy() end
-                _G.currentHighlight = Instance.new("SelectionBox")
-                _G.currentHighlight.Adornee = target
-                _G.currentHighlight.LineThickness = 0.05
-                _G.currentHighlight.Color3 = Color3.new(1,0,0)
-                _G.currentHighlight.Parent = target
-            end
-            _G.selectedPartLabel.Text = target.Name
-        else
-            if _G.currentHighlight then
-                _G.currentHighlight:Destroy()
-                _G.currentHighlight = nil
-            end
-            _G.selectedPartLabel.Text = "No part selected"
-        end
-    end
-end)
-
--- Click Activator: Opens a new GUI listing all parts with ClickDetectors.
-local function openClickOverrideGUI()
-    local overrideGui = Instance.new("ScreenGui")
-    overrideGui.Name = "ClickActivatorGUI"
-    overrideGui.Parent = player:WaitForChild("PlayerGui")
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0,300,0,400)
-    mainFrame.Position = UDim2.new(0.5,-150,0.5,-200)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    mainFrame.Parent = overrideGui
-    
-    createDeleteButton(mainFrame)
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1,0,0,30)
-    titleLabel.Position = UDim2.new(0,0,0,5)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "Click Activator"
-    titleLabel.TextColor3 = Color3.new(1,1,1)
-    titleLabel.Font = Enum.Font.SourceSansBold
-    titleLabel.TextSize = 20
-    titleLabel.Parent = mainFrame
-
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1,-20,1,-50)
-    scrollFrame.Position = UDim2.new(0,10,0,40)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 12
-    scrollFrame.Parent = mainFrame
-
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1,0,0,0)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = scrollFrame
-
-    local clickOverrides = {}  -- mapping part -> toggle state
-    local yOffset = 0
-
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("BasePart") and obj:FindFirstChildOfClass("ClickDetector") then
-            local row = Instance.new("Frame")
-            row.Size = UDim2.new(1,0,0,25)
-            row.Position = UDim2.new(0,0,0,yOffset)
-            row.BackgroundTransparency = 1
-            row.Parent = contentFrame
-
-            local toggleBtn = Instance.new("TextButton")
-            toggleBtn.Size = UDim2.new(0,25,1,0)
-            toggleBtn.Position = UDim2.new(0,0,0,0)
-            toggleBtn.Text = "X"
-            toggleBtn.BackgroundColor3 = Color3.new(1,0,0)
-            toggleBtn.Parent = row
-
-            clickOverrides[obj] = false
-            toggleBtn.MouseButton1Click:Connect(function()
-                clickOverrides[obj] = not clickOverrides[obj]
-                if clickOverrides[obj] then
-                    toggleBtn.Text = "✔"
-                    toggleBtn.BackgroundColor3 = Color3.new(0,1,0)
-                else
-                    toggleBtn.Text = "X"
-                    toggleBtn.BackgroundColor3 = Color3.new(1,0,0)
-                end
-            end)
-
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Size = UDim2.new(1,-30,1,0)
-            nameLabel.Position = UDim2.new(0,30,0,0)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Text = obj.Name
-            nameLabel.TextColor3 = Color3.new(1,1,1)
-            nameLabel.Font = Enum.Font.SourceSansBold
-            nameLabel.TextSize = 16
-            nameLabel.Parent = row
-
-            yOffset = yOffset + 25
-        end
-    end
-    contentFrame.Size = UDim2.new(1,0,0,yOffset)
-    
-    -- Continuous loop: every heartbeat, fire click detectors on toggled parts.
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not overrideGui or not overrideGui.Parent then
-            connection:Disconnect()
-            return
-        end
-        for obj, state in pairs(clickOverrides) do
-            if state then
-                for _, cd in ipairs(obj:GetChildren()) do
-                    if cd:IsA("ClickDetector") then
-                        pcall(function() fireclickdetector(cd) end)
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Position Click Activator button so it doesn't overlap the selection label.
 local clickOverrideBtn = Instance.new("TextButton")
 clickOverrideBtn.Size = UDim2.new(1,-20,0,35)
 clickOverrideBtn.Position = UDim2.new(0,10,0,90)
@@ -1109,6 +986,151 @@ clickOverrideBtn.Font = Enum.Font.SourceSansBold
 clickOverrideBtn.TextSize = 20
 clickOverrideBtn.Parent = page4
 clickOverrideBtn.MouseButton1Click:Connect(function() openClickOverrideGUI() end)
+
+-- Animation Loader Button now moved to Page 4, below Click Activator.
+local animLoaderBtn = Instance.new("TextButton")
+animLoaderBtn.Size = UDim2.new(1,-20,0,35)
+animLoaderBtn.Position = UDim2.new(0,10,0,130)
+animLoaderBtn.Text = "Animation Loader"
+animLoaderBtn.BackgroundColor3 = Color3.fromRGB(0,150,150)
+animLoaderBtn.TextColor3 = Color3.new(1,1,1)
+animLoaderBtn.Font = Enum.Font.SourceSansBold
+animLoaderBtn.TextSize = 20
+animLoaderBtn.Parent = page4
+animLoaderBtn.MouseButton1Click:Connect(function() openAnimationLoaderGUI() end)
+
+-- Function to open the Animation Loader GUI (draggable).
+function openAnimationLoaderGUI()
+    local animGui = Instance.new("ScreenGui")
+    animGui.Name = "AnimationLoaderGUI"
+    animGui.ResetOnSpawn = false
+    animGui.Parent = player:WaitForChild("PlayerGui")
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0,300,0,400)
+    mainFrame.Position = UDim2.new(0.5,-150,0.5,-200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    mainFrame.Active = true
+    mainFrame.Draggable = true  -- Allow dragging.
+    mainFrame.Parent = animGui
+    
+    createDeleteButton(mainFrame)
+    
+    local copyAnimEnabled = false  -- dedicated boolean for toggle state.
+    
+    local copyToggle = Instance.new("TextButton")
+    copyToggle.Size = UDim2.new(0,200,0,40)
+    copyToggle.Position = UDim2.new(0,10,0,10)
+    copyToggle.Text = "Copy Animation: OFF"
+    copyToggle.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    copyToggle.TextColor3 = Color3.new(1,1,1)
+    copyToggle.Font = Enum.Font.SourceSansBold
+    copyToggle.TextSize = 20
+    copyToggle.Parent = mainFrame
+    
+    copyToggle.MouseButton1Click:Connect(function()
+        copyAnimEnabled = not copyAnimEnabled
+        if copyAnimEnabled then
+            copyToggle.Text = "Copy Animation: ON"
+            copyToggle.BackgroundColor3 = Color3.new(0,1,0)
+        else
+            copyToggle.Text = "Copy Animation: OFF"
+            copyToggle.BackgroundColor3 = Color3.new(1,0,0)
+        end
+    end)
+    
+    local clearAnimBtn = Instance.new("TextButton")
+    clearAnimBtn.Size = UDim2.new(0,200,0,40)
+    clearAnimBtn.Position = UDim2.new(0,10,0,60)
+    clearAnimBtn.Text = "Clear Animation"
+    clearAnimBtn.BackgroundColor3 = Color3.fromRGB(0,0,255)
+    clearAnimBtn.TextColor3 = Color3.new(1,1,1)
+    clearAnimBtn.Font = Enum.Font.SourceSansBold
+    clearAnimBtn.TextSize = 20
+    clearAnimBtn.Parent = mainFrame
+    
+    local animListFrame = Instance.new("ScrollingFrame")
+    animListFrame.Size = UDim2.new(1,-20,1,-110)
+    animListFrame.Position = UDim2.new(0,10,0,110)
+    animListFrame.BackgroundTransparency = 1
+    animListFrame.ScrollBarThickness = 12
+    animListFrame.Parent = mainFrame
+    
+    local animContent = Instance.new("Frame")
+    animContent.Size = UDim2.new(1,0,0,0)
+    animContent.BackgroundTransparency = 1
+    animContent.Parent = animListFrame
+    
+    local yOffset = 0
+    local function addAnimationItem(animId)
+         local item = Instance.new("TextButton")
+         item.Size = UDim2.new(1,0,0,30)
+         item.Position = UDim2.new(0,0,0,yOffset)
+         item.Text = animId
+         item.BackgroundColor3 = Color3.fromRGB(100,100,100)
+         item.TextColor3 = Color3.new(1,1,1)
+         item.Font = Enum.Font.SourceSansBold
+         item.TextSize = 18
+         item.Parent = animContent
+         
+         item.MouseButton1Click:Connect(function()
+              if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                  local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                  local anim = Instance.new("Animation")
+                  anim.AnimationId = animId
+                  local track = hum:LoadAnimation(anim)
+                  track:Play()
+              end
+         end)
+         yOffset = yOffset + 35
+         animContent.Size = UDim2.new(1,0,0,yOffset)
+    end
+    
+    -- Heartbeat to attach a ClickDetector if copyAnimEnabled is true.
+    local animCopyHeartbeat
+    animCopyHeartbeat = RunService.Heartbeat:Connect(function()
+         if copyAnimEnabled then
+             local target = player:GetMouse().Target
+             if target and target.Name == "HumanoidRootPart" then
+                  if not target:FindFirstChild("AnimationCopier") then
+                      local cd = Instance.new("ClickDetector")
+                      cd.Name = "AnimationCopier"
+                      cd.MaxActivationDistance = 99999
+                      cd.Parent = target
+                      cd.MouseClick:Connect(function(plr)
+                          if target.Parent then
+                              local hum = target.Parent:FindFirstChildOfClass("Humanoid")
+                              if hum then
+                                  local tracks = hum:GetPlayingAnimationTracks()
+                                  for _, track in ipairs(tracks) do
+                                      if track.IsPlaying and track.Animation and track.Animation.AnimationId ~= "" then
+                                          addAnimationItem(track.Animation.AnimationId)
+                                          break
+                                      end
+                                  end
+                              end
+                          end
+                      end)
+                  end
+             end
+         else
+             -- Remove attached AnimationCopier detectors if toggle is off.
+             for _, part in ipairs(workspace:GetDescendants()) do
+                 if part:IsA("BasePart") and part.Name == "HumanoidRootPart" then
+                     local cd = part:FindFirstChild("AnimationCopier")
+                     if cd then cd:Destroy() end
+                 end
+             end
+         end
+         if not animGui or not animGui.Parent then
+             if animCopyHeartbeat then animCopyHeartbeat:Disconnect() end
+         end
+    end)
+end
+
+-----------------------------------------------------------
+-- PAGE 4 End.
+-----------------------------------------------------------
 
 -----------------------------------------------------------
 -- Infinite Health (Page2)
@@ -1150,23 +1172,23 @@ end)
 if queue_on_teleport then
     queue_on_teleport([[
         repeat wait() until game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-        wait(10)  -- Extra delay to ensure everything is loaded
+        wait(10)
         if not getgenv().GuiClosed then
             local bootstrapGui = Instance.new("ScreenGui")
             bootstrapGui.Name = "BootstrapGUI"
             bootstrapGui.ResetOnSpawn = false
-            bootstrapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling  -- Ensure proper layering
+            bootstrapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
             bootstrapGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
             
             local loadButton = Instance.new("TextButton")
             loadButton.Size = UDim2.new(0,200,0,50)
-            loadButton.Position = UDim2.new(0,10,0,70)  -- Positioned near the top left
+            loadButton.Position = UDim2.new(0,10,0,70)
             loadButton.Text = "Load GPT UI"
             loadButton.BackgroundColor3 = Color3.new(0,1,0)
             loadButton.TextColor3 = Color3.new(1,1,1)
             loadButton.Font = Enum.Font.SourceSansBold
             loadButton.TextSize = 24
-            loadButton.ZIndex = 10  -- Ensure the button is above other elements
+            loadButton.ZIndex = 10
             loadButton.Parent = bootstrapGui
             
             local function loadFullUI()
@@ -1177,7 +1199,7 @@ if queue_on_teleport then
                 local cam = workspace.CurrentCamera
                 if cam then
                     cam.CameraType = Enum.CameraType.Custom
-                    cam.MaxZoomDistance = 10000  -- Allow free zooming
+                    cam.MaxZoomDistance = 10000
                 end
                 local success, err = pcall(function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
@@ -1189,7 +1211,6 @@ if queue_on_teleport then
             
             loadButton.MouseButton1Click:Connect(loadFullUI)
             
-            -- Bind the "=" key (and KeypadEquals) to force continuous mouse unlock
             game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
                 if gameProcessed then return end
                 if input.KeyCode == Enum.KeyCode.Equals or input.KeyCode == Enum.KeyCode.KeypadEquals then
@@ -1211,7 +1232,7 @@ else
         wait(10)
         if not getgenv().GuiClosed and not player.PlayerGui:FindFirstChild("GPTUI") then
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/workderpidly/gpt-ui/main/README.md", true))()
             end)
             if not success then
                 warn("Error reloading GUI on CharacterAdded: " .. tostring(err))
@@ -1220,7 +1241,7 @@ else
     end)
 end
 
--- Persistent Forced Mouse Unlock: once "=" is pressed, every frame force unlock the mouse.
+-- Persistent Forced Mouse Unlock.
 local forceMouseUnlock = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
