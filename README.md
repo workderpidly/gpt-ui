@@ -22,8 +22,9 @@
          - Animation Loader: Opens a draggable GUI that has:
               • A "Copy Animation" toggle button – when enabled, a click detector (“AnimationCopier”) is attached to any HumanoidRootPart under the mouse.
               • When that click detector is clicked, the humanoid’s current playing animation is copied to a scrolling list.
+              • If a proper name isn’t found, the list will show "animation(number)".
               • Clicking an item on the list loads that animation on the player's humanoid.
-              • A "Clear Animation" button stops any currently playing animations on the player.
+              • A "Clear Animation" button stops any playing animations on the player.
     • Persistence: On teleport, a minimal bootstrap GUI appears. When its button is clicked
          (or when the "=" key is pressed), the camera is set for free zoom, the mouse is unlocked,
          and the full GPT UI script is loaded from your public GitHub repository's README.
@@ -49,7 +50,7 @@ screenGui.Name = "GPTUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Global variables
+-- Global variables.
 local hitboxIndicator, baseIndicatorSize
 local radiusToggled = true
 local activeTargets, outlinedAdorns, sidebarEntries = {}, {}, {}
@@ -135,7 +136,7 @@ for i = 1,4 do
 end
 
 -----------------------------------------------------------
--- PAGE 1: Tracker GUI, Fly Script, Show Items
+-- PAGE 1: Tracker GUI, Fly Script, Show Items.
 -----------------------------------------------------------
 local page1 = pages[1]
 
@@ -447,7 +448,7 @@ trackerTextBox.FocusLost:Connect(function(enterPressed)
 end)
 
 -----------------------------------------------------------
--- PAGE 2: Hitbox & Teleport Controls, Sidebar, Infinite Health
+-- PAGE 2: Hitbox & Teleport Controls, Sidebar, Infinite Health.
 -----------------------------------------------------------
 local page2 = pages[2]
 
@@ -682,7 +683,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -----------------------------------------------------------
--- PAGE 3: Inventory, Classic Sword, Restore Jump, Value Override
+-- PAGE 3: Inventory, Classic Sword, Restore Jump, Value Override.
 -----------------------------------------------------------
 local page3 = pages[3]
 
@@ -987,7 +988,7 @@ clickOverrideBtn.TextSize = 20
 clickOverrideBtn.Parent = page4
 clickOverrideBtn.MouseButton1Click:Connect(function() openClickOverrideGUI() end)
 
--- Animation Loader Button now moved to Page 4, below Click Activator.
+-- Animation Loader Button moved to Page 4, below Click Activator.
 local animLoaderBtn = Instance.new("TextButton")
 animLoaderBtn.Size = UDim2.new(1,-20,0,35)
 animLoaderBtn.Position = UDim2.new(0,10,0,130)
@@ -1017,6 +1018,7 @@ function openAnimationLoaderGUI()
     createDeleteButton(mainFrame)
     
     local copyAnimEnabled = false  -- dedicated boolean for toggle state.
+    local animCount = 0  -- counter for animations.
     
     local copyToggle = Instance.new("TextButton")
     copyToggle.Size = UDim2.new(0,200,0,40)
@@ -1063,10 +1065,17 @@ function openAnimationLoaderGUI()
     
     local yOffset = 0
     local function addAnimationItem(animId)
+         animCount = animCount + 1
+         -- Try to extract a number from the AnimationId.
+         local extracted = string.match(animId, "rbxassetid://(%d+)")
+         if not extracted then
+             extracted = tostring(animCount)
+         end
+         local displayText = "animation(" .. extracted .. ")"
          local item = Instance.new("TextButton")
          item.Size = UDim2.new(1,0,0,30)
          item.Position = UDim2.new(0,0,0,yOffset)
-         item.Text = animId
+         item.Text = displayText
          item.BackgroundColor3 = Color3.fromRGB(100,100,100)
          item.TextColor3 = Color3.new(1,1,1)
          item.Font = Enum.Font.SourceSansBold
@@ -1167,7 +1176,7 @@ infiniteHealthBtn.MouseButton1Click:Connect(function()
 end)
 
 -----------------------------------------------------------
--- Teleport Reactivation Bootstrap
+-- Teleport Reactivation Bootstrap.
 -----------------------------------------------------------
 if queue_on_teleport then
     queue_on_teleport([[
